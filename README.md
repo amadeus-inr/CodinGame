@@ -2,9 +2,11 @@
 
 ## Team
 
-Valentin - Thinker, Gamer & Code reviewer
-Shirish - DEV environment & Code
-Thilo - Code
+Name | Rough role
+---|---
+Valentin |  Thinker, Gamer & Code reviewer
+Shirish | DEV environment & Code
+Thilo | Code
 
 ## Strategy
 
