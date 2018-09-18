@@ -1,4 +1,4 @@
-# CodinGame
+# CodinGame [DRAFT based on memory]
 
 ## Team
 
@@ -11,7 +11,7 @@ Thilo | Code
 ## Strategy
 
 1. Set-up DEV environment prior to game
-2. Two people play quickly in the beginning while the third checks that whole flow works
+2. Two people play quickly in the beginning in the webapp while the third checks that whole flow works.
 3. Once the basics are clear discuss the strategy
 
 ## Let's start!
