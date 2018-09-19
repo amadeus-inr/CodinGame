@@ -6,7 +6,7 @@ Name | Rough role
 ---|---
 Valentin |  Thinker, Gamer & Code reviewer
 Shirish | DEV environment & Code
-Thilo | Code
+Thilo | Code & Facilitator
 
 ## Strategy
 
@@ -22,4 +22,5 @@ Thilo | Code
 
 ### How to use an external code editor
 
-[TBC]
+https://rndwww.nce.amadeus.net/confluence/pages/viewpage.action?spaceKey=UG&title=How+to+use+an+external+code+editor
+
