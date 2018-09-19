@@ -1,15 +1,22 @@
+import sys
+import math
+
+# Auto-generated code below aims at helping you parse
+# the standard input according to the problem statement.
+
+base_x, base_y = [int(i) for i in input().split()]
+heroes_per_player = int(input())
+
 # game loop
-while 1:
-    enemy_1 = input()  # name of enemy 1
-    dist_1 = int(input())  # distance to enemy 1
-    enemy_2 = input()  # name of enemy 2
-    dist_2 = int(input())  # distance to enemy 2
+while True:
+    for i in range(2):
+        health, mana = [int(j) for j in input().split()]
+    entity_count = int(input())
+    for i in range(entity_count):
+        id, type, x, y, shield_life, is_controlled, health, vx, vy, near_base, threat_for = [int(j) for j in input().split()]
+    for i in range(heroes_per_player):
 
-    # Write an action using print
+        # Write an action using print
+        # To debug: print("Debug messages...", file=sys.stderr)
 
-    # Enter the code here
-    
-    if dist_1 < dist_2:
-        print(enemy_1)
-    else:
-        print(enemy_2)
+        print("WAIT")
