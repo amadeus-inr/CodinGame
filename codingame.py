@@ -32,13 +32,18 @@ HERO = 1
 ENEMY = 2
 
 
+def distance( A, B):
+
+    return numpy.linalg.norm(numpy.array(A) - numpy.array(B))
+
+
 def get_entities():
     entities = {MONSTER: [], HERO: [], ENEMY: []}
     entity_count = int(input())
     for i in range(entity_count):
         id, type, x, y, shield_life, is_controlled, health, vx, vy, near_base, threat_for = [int(j) for j in
                                                                                              input().split()]
-        base_distance = numpy.linalg.norm(base_position - numpy.array((x, y)))
+        base_distance = distance(base_position, (x, y))
 
         entities[type].append({
             ID: id,
@@ -62,42 +67,36 @@ def get_entities():
 def choose_monster(monsters):
     if not monsters:
         return {}
-    threats = [m for m in monsters if m[THREAT] == IS_THREAT]
+    threats =
     threat = sorted(threats, key = lambda x: x[BASE_DISTANCE], reverse=True)
 
     return threat[0] if threat else {}
 
 def get_monsters(entities):
-
-    return entities[MONSTER]
+    monsters  = entities[MONSTER]
+    return [m for m in monsters if m[THREAT] == IS_THREAT]
 
 def get_options(entity):
-    return []
+    return get_points_on_circumference(entity[X],entity[Y])
 
-def overlap( option1, solution):
-    return 0
 
 def compute_value(option,solution):
 
-    return -1
+    for hero in solution:
+        hero_distance = distance(d, option)
 
-class Circle:
 
-    def __init__(self,x,y,radius):
-
-        self.x = x
-        self.y = y
-        self.radius = radius
+    return -distance(option,base_position) + sum([ for d in solution])
 
 def get_points_on_circumference(x, y, number_of_points=3, r=800):
     angle = 2 * math.pi / number_of_points
     return filter(lambda a: a[0] >= 0 and a[1] >= 0,
-                  [(x + r * math.cos(angle * i), y + r * math.sin(angle * i)) for i in range(number_of_points)])
+                  [(int(x + r * math.cos(angle * i)), int(y + r * math.sin(angle * i))) for i in range(number_of_points)])
 
 
 if __name__=="__main__":
     base_x, base_y = [int(i) for i in input().split()]
-    base_position = numpy.array((base_x, base_y))
+    base_position = (base_x, base_y)
     heroes_per_player = int(input())
     # game loop
     while True:
@@ -110,18 +109,32 @@ if __name__=="__main__":
         for monster in monsters:
             print("I see: %s %s" % (monster[ID], str(monster[BASE_DISTANCE])), file=sys.stderr)
         enemy = choose_monster(monsters)
+        solution = []
         for i in range(heroes_per_player):
+
+            print("Hero %s chooses an action" % entities[HERO][i][ID], file=sys.stderr)
             # Write an action using print
             # To debug: print("Debug messages...", file=sys.stderr)
 
 
             # Get options
+            options = get_options(entities[HERO][i])
 
             # Compute value
+            options = sorted( options, key = lambda x: compute_value(x,solution),reverse= True)
+
+            for option in options:
+                print("Evaluating option %s %s" % (str(option),compute_value(option,solution)), file=sys.stderr)
+
+            option = options[0]
+            print("Choosing option %s " % (str(option)), file=sys.stderr)
 
             # Update solution
-            if enemy:
-                print("Attacking %s %s" % (enemy[ID], str(enemy[BASE_DISTANCE])), file=sys.stderr)
-                print("MOVE %s %s" % (enemy[X], enemy[Y]))
+
+            solution.append(option)
+
+            if option:
+                print("Move to option %s %s" % option, file=sys.stderr)
+                print("MOVE %s %s" % option)
             else:
                 print("WAIT")
