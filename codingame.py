@@ -67,8 +67,7 @@ def get_entities():
 def choose_monster(monsters):
     if not monsters:
         return {}
-    threats =
-    threat = sorted(threats, key = lambda x: x[BASE_DISTANCE], reverse=True)
+    threat = sorted(monsters, key = lambda x: x[BASE_DISTANCE], reverse=True)
 
     return threat[0] if threat else {}
 
@@ -79,20 +78,21 @@ def get_monsters(entities):
 def get_options(entity):
     return get_points_on_circumference(entity[X],entity[Y])
 
+VIEW_DISTANCE = 2200
 
-def compute_value(option,solution):
-
+def compute_value(option,solution, base_penalty = 0):
+    cost = 0
     for hero in solution:
-        hero_distance = distance(d, option)
+        hero_distance = distance(hero, option)
 
+        cost = cost + max(0,2 * VIEW_DISTANCE - hero_distance)
 
-    return -distance(option,base_position) + sum([ for d in solution])
+    return - base_penalty * distance(option,base_position) + cost
 
 def get_points_on_circumference(x, y, number_of_points=3, r=800):
     angle = 2 * math.pi / number_of_points
     return filter(lambda a: a[0] >= 0 and a[1] >= 0,
                   [(int(x + r * math.cos(angle * i)), int(y + r * math.sin(angle * i))) for i in range(number_of_points)])
-
 
 if __name__=="__main__":
     base_x, base_y = [int(i) for i in input().split()]
@@ -121,12 +121,19 @@ if __name__=="__main__":
             options = get_options(entities[HERO][i])
 
             # Compute value
-            options = sorted( options, key = lambda x: compute_value(x,solution),reverse= True)
+
+            ## Minimizing cost
+
+            options = sorted(options,key = lambda o:compute_value(o,solution))
 
             for option in options:
+
                 print("Evaluating option %s %s" % (str(option),compute_value(option,solution)), file=sys.stderr)
 
+
+
             option = options[0]
+
             print("Choosing option %s " % (str(option)), file=sys.stderr)
 
             # Update solution
