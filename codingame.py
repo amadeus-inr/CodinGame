@@ -80,6 +80,12 @@ def get_options(entity):
 
 VIEW_DISTANCE = 2200
 
+
+def potential_monster_to_target(entities, hero_position):
+    monsters = get_monsters(entities)
+    return filter(lambda a: a[1] <= 800*2, {monster: distance(hero_position, (monster[X], monster[Y])) for monster in monsters})
+
+
 def compute_value(option,solution, base_penalty = 0):
     cost = 0
     for hero in solution:
