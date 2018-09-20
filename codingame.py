@@ -81,9 +81,14 @@ def get_options(entity):
 VIEW_DISTANCE = 2200
 
 
-def potential_monster_to_target(entities, hero_position):
+def potential_monster_to_target(entities, hero):
+    hero_position = (hero[X],hero[Y])
     monsters = get_monsters(entities)
-    return filter(lambda a: a[1] <= 800*2, {monster: distance(hero_position, (monster[X], monster[Y])) for monster in monsters})
+
+    close_monsters = filter(lambda a: distance(hero_position, (a[X], a[Y])) <= 800*2, monsters )
+
+    return close_monsters
+
 
 
 def compute_value(option,solution, base_penalty = 0):
@@ -146,8 +151,13 @@ if __name__=="__main__":
 
             solution.append(option)
 
-            if option:
-                print("Move to option %s %s" % option, file=sys.stderr)
-                print("MOVE %s %s" % option)
+            monster = choose_monster(potential_monster_to_target(entities, entities[HERO][i]))
+            print("Attack monster %s" % str(monster), file=sys.stderr)
+
+            if monster:
+                print("MOVE %s %s" % (monster[X], monster[Y]))
+           # elif option:
+            #    print("Move to option %s %s" % option, file=sys.stderr)
+             #   print("MOVE %s %s" % option)
             else:
                 print("WAIT")
