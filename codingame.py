@@ -118,16 +118,29 @@ def potential_monster_to_target(entities, hero):
 
 BASE_DISTANCE = 5000
 
-def compute_value(option,solution, defense_area):
-    cost = 0
-    base_distance = distance(option, base_position)
-    for hero in solution:
+def compute_value(option,solution, defense_area, defending = 1):
+    if defending:
+        cost = 0
+        base_distance = distance(option, base_position)
+        for hero in solution:
 
-        hero_distance = distance(hero, option)
+            hero_distance = distance(hero, option)
 
-        cost = cost + max(0,2 * VIEW_DISTANCE - hero_distance)
-    base_penalty = -100000 if base_distance > BASE_DISTANCE * (1 + defense_area) else 1
-    return - base_penalty * base_distance + cost
+            cost = cost + max(0,2 * VIEW_DISTANCE - hero_distance)
+        base_penalty = -100000 if base_distance > BASE_DISTANCE * (1 + defense_area) else 1
+        return - base_penalty * base_distance + cost
+    else:
+        cost = 0
+        base_distance = distance(option, base_position)
+        for hero in solution:
+
+            hero_distance = distance(hero, option)
+
+            cost = cost + max(0,2 * VIEW_DISTANCE - hero_distance)
+        enemy_base_distance = distance(option, enemy_base_position)
+        base_penalty = -100000 if enemy_base_distance < 2000 else 1
+        return - base_penalty * base_distance + cost
+
 
 def in_range_control(hero,monster):
     return object_distance(hero, monster) <=2200
@@ -150,7 +163,7 @@ def attack(defense_area,hero):
         options = get_options(hero)
         # Compute value
         ## Minimizing cost
-        options = sorted(options, key=lambda o: compute_value(o, solution, defense_area))
+        options = sorted(options, key=lambda o: compute_value(o, solution, defense_area, defending = 1))
         # for option in options:
         #    print("Evaluating option %s %s" % (str(option),compute_value(option,solution)), file=sys.stderr)
         option = options[0]
@@ -160,8 +173,13 @@ def attack(defense_area,hero):
         flag = False
         for monster in monsters:
             attack = "WAIT"
-            if our_mana >= 20 and monster[HEALTH] > 20 and monster[SHIELD] == 0:
-                if monster[ENEMY_BASE_DISTANCE] <= 6000:
+            if our_mana >= 20 and monster[HEALTH] > 17 and monster[SHIELD] == 0:
+                if monster[ENEMY_BASE_DISTANCE] <= 4500:
+                    if in_range_control(entities[HERO][i], monster):
+                        attack = "SPELL SHIELD %s" % monster[ID]
+                        our_mana = our_mana - 10
+                        flag = True
+                elif monster[ENEMY_BASE_DISTANCE] <= 6000:
                     if in_range_wind(entities[HERO][i], monster):
                         attack = "SPELL WIND %s %s" % (enemy_base_x, enemy_base_y)
                         our_mana = our_mana - 10
@@ -260,6 +278,6 @@ if __name__=="__main__":
         solution = []
         for i in range(heroes_per_player):
             if i == 0:
-                attack(1.3, entities[HERO][i])
+                attack(2.1, entities[HERO][i])
             else:
-                defend(0)
+                defend(0.1)
