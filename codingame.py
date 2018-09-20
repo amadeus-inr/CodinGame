@@ -81,6 +81,20 @@ def compute_value(option,solution):
 
     return -1
 
+class Circle:
+
+    def __init__(self,x,y,radius):
+
+        self.x = x
+        self.y = y
+        self.radius = radius
+
+def get_points_on_circumference(x, y, number_of_points=3, r=800):
+    angle = 2 * math.pi / number_of_points
+    return filter(lambda a: a[0] >= 0 and a[1] >= 0,
+                  [(x + r * math.cos(angle * i), y + r * math.sin(angle * i)) for i in range(number_of_points)])
+
+
 if __name__=="__main__":
     base_x, base_y = [int(i) for i in input().split()]
     base_position = numpy.array((base_x, base_y))
