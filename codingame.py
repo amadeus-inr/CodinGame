@@ -36,6 +36,9 @@ def distance( A, B):
 
     return numpy.linalg.norm(numpy.array(A) - numpy.array(B))
 
+def object_distance( A, B):
+
+    return distance ((A[X],A[Y]),(B[X],B[Y]))
 
 def get_entities():
     entities = {MONSTER: [], HERO: [], ENEMY: []}
@@ -63,11 +66,10 @@ def get_entities():
 
     return entities
 
-
 def choose_monster(monsters):
     if not monsters:
         return {}
-    threat = sorted(monsters, key = lambda x: x[BASE_DISTANCE], reverse=True)
+    threat = sorted(monsters, key = lambda x: x[BASE_DISTANCE])
 
     return threat[0] if threat else {}
 
@@ -89,18 +91,26 @@ def potential_monster_to_target(entities, hero):
 
     return close_monsters
 
+BASE_DISTANCE = 5000
 
-
-def compute_value(option,solution, base_penalty = 0):
+def compute_value(option,solution, base_penalty = 1):
     cost = 0
+    base_distance = distance(option, base_position)
     for hero in solution:
+
         hero_distance = distance(hero, option)
 
         cost = cost + max(0,2 * VIEW_DISTANCE - hero_distance)
+    base_penalty = -100000 if base_distance > BASE_DISTANCE else 1
+    return - base_penalty * base_distance + cost
 
-    return - base_penalty * distance(option,base_position) + cost
+def in_range_control(hero,monster):
+    return object_distance(hero, monster) <=2200
 
-def get_points_on_circumference(x, y, number_of_points=3, r=800):
+def in_range_wind(hero,monster):
+    return object_distance(hero, monster) <=1280
+
+def get_points_on_circumference(x, y, number_of_points=32, r=800):
     angle = 2 * math.pi / number_of_points
     return filter(lambda a: a[0] >= 0 and a[1] >= 0 and a[0] <= 17630 and a[1] <= 9000,
                   [(int(x + r * math.cos(angle * i)), int(y + r * math.sin(angle * i))) for i in range(number_of_points)])
@@ -108,11 +118,22 @@ def get_points_on_circumference(x, y, number_of_points=3, r=800):
 if __name__=="__main__":
     base_x, base_y = [int(i) for i in input().split()]
     base_position = (base_x, base_y)
+    if base_x == 0:
+        enemy_base_x = 17630
+        enemy_base_y = 9000
+    else:
+        enemy_base_x = 0
+        enemy_base_y = 0
+
+
     heroes_per_player = int(input())
     # game loop
     while True:
+        our_mana = 0
         for i in range(2):
             health, mana = [int(j) for j in input().split()]
+            if i == 0:
+                our_mana = mana
 
         entities = get_entities()
         enemy = {}
@@ -137,27 +158,36 @@ if __name__=="__main__":
 
             options = sorted(options,key = lambda o:compute_value(o,solution))
 
-            for option in options:
+           # for option in options:
 
-                print("Evaluating option %s %s" % (str(option),compute_value(option,solution)), file=sys.stderr)
+            #    print("Evaluating option %s %s" % (str(option),compute_value(option,solution)), file=sys.stderr)
 
 
 
             option = options[0]
 
-            print("Choosing option %s " % (str(option)), file=sys.stderr)
+            #print("Choosing option %s " % (str(option)), file=sys.stderr)
 
             # Update solution
 
-            solution.append(option)
-
-            monster = choose_monster(potential_monster_to_target(entities, entities[HERO][i]))
-            print("Attack monster %s" % str(monster), file=sys.stderr)
+            monster = choose_monster(get_monsters(entities))
 
             if monster:
-                print("MOVE %s %s" % (monster[X], monster[Y]))
-           # elif option:
-            #    print("Move to option %s %s" % option, file=sys.stderr)
-             #   print("MOVE %s %s" % option)
+                attack = "MOVE %s %s" % (monster[X], monster[Y])
+                if our_mana >= 10 and monster[HEALTH] > 10:
+                    if monster[BASE_DISTANCE] <= 5000 and in_range_wind(entities[HERO][i],monster):
+                        attack = "SPELL WIND %s %s"%(enemy_base_x,enemy_base_y)
+                        our_mana = our_mana - 10
+                    elif in_range_control(entities[HERO][i],monster):
+                        attack = "SPELL CONTROL %s %s %s" % (monster[ID],enemy_base_x, enemy_base_y)
+                        our_mana = our_mana - 10
+                print("Attack monster %s" % str(monster), file=sys.stderr)
+                solution.append((monster[X],monster[Y]))
+                print("%s"% attack)
+
+            elif option:
+                print("Move to option %s %s" % option, file=sys.stderr)
+                solution.append(option)
+                print("MOVE %s %s" % option)
             else:
                 print("WAIT")
