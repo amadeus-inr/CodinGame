@@ -81,14 +81,6 @@ def compute_value(option,solution):
 
     return -1
 
-class Circle:
-
-    def __init__(self,x,y,radius):
-
-        self.x = x
-        self.y = y
-        self.radius = radius
-
 if __name__=="__main__":
     base_x, base_y = [int(i) for i in input().split()]
     base_position = numpy.array((base_x, base_y))
