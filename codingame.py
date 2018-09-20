@@ -91,7 +91,7 @@ def compute_value(option,solution, base_penalty = 0):
 
 def get_points_on_circumference(x, y, number_of_points=3, r=800):
     angle = 2 * math.pi / number_of_points
-    return filter(lambda a: a[0] >= 0 and a[1] >= 0,
+    return filter(lambda a: a[0] >= 0 and a[1] >= 0 and a[0] <= 17630 and a[1] <= 9000,
                   [(int(x + r * math.cos(angle * i)), int(y + r * math.sin(angle * i))) for i in range(number_of_points)])
 
 if __name__=="__main__":
