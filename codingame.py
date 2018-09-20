@@ -171,16 +171,17 @@ if __name__=="__main__":
             # Update solution
 
             monster = choose_monster(get_monsters(entities))
-
             if monster:
                 attack = "MOVE %s %s" % (monster[X], monster[Y])
-                if our_mana >= 10 and monster[HEALTH] > 10:
-                    if monster[BASE_DISTANCE] <= 5000 and in_range_wind(entities[HERO][i],monster):
-                        attack = "SPELL WIND %s %s"%(enemy_base_x,enemy_base_y)
-                        our_mana = our_mana - 10
-                    elif in_range_control(entities[HERO][i],monster):
-                        attack = "SPELL CONTROL %s %s %s" % (monster[ID],enemy_base_x, enemy_base_y)
-                        our_mana = our_mana - 10
+                if our_mana >= 10 and monster[HEALTH] > 10 and monster[SHIELD] == 0:
+                    if monster[BASE_DISTANCE] <= 5000:
+                        if in_range_wind(entities[HERO][i],monster):
+                            attack = "SPELL WIND %s %s"%(enemy_base_x,enemy_base_y)
+                            our_mana = our_mana - 10
+                    else:
+                        if in_range_control(entities[HERO][i],monster):
+                            attack = "SPELL CONTROL %s %s %s" % (monster[ID],enemy_base_x, enemy_base_y)
+                            our_mana = our_mana - 10
                 print("Attack monster %s" % str(monster), file=sys.stderr)
                 solution.append((monster[X],monster[Y]))
                 print("%s"% attack)
