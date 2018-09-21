@@ -131,7 +131,7 @@ def potential_monster_to_target(entities, hero):
 
 BASE_DISTANCE = 5000
 
-def compute_value(option,solution, defense_area):
+def compute_value(option,solution, defense_area, _):
     cost = 0
     base_distance = distance(option, base_position)
     for hero in solution:
@@ -165,8 +165,8 @@ def compute_value_enemy_base(option,solution, inner_defense_area, outer_defense_
     prox_cost = proximity_cost(option, solution)
 
     enemy_base_distance = distance(option, enemy_base_position)
-    within_internal_wall_cost = max(0, enemy_base_distance - (BASE_DISTANCE * (1 + inner_defense_area))*42)
-    above_external_wall_cost = max(0, (BASE_DISTANCE * (1 + outer_defense_area) - enemy_base_distance)*21)
+    within_internal_wall_cost = max(0, enemy_base_distance - (BASE_DISTANCE * (1 + outer_defense_area))*42)
+    above_external_wall_cost = max(0, (BASE_DISTANCE * (1 + inner_defense_area) - enemy_base_distance)*21)
 
     return within_internal_wall_cost + above_external_wall_cost + prox_cost
 
@@ -228,19 +228,19 @@ def get_defensive_wind_direction(hero):
     return ( 2*hero[X] - base_x, 2*hero[Y] - base_y)
 
 
-def get_options_sorted(hero, area):
+def get_options_sorted(hero, value_calc, inner_defense_area, outer_defense_area):
     # Write an action using print
     # To debug: print("Debug messages...", file=sys.stderr)
     # Get options
     options = get_options(hero)
     # Compute value
     ## Minimizing cost
-    options_with_values = [(option, compute_value(option, solution, area)) for option in options]
+    options_with_values = [(option, value_calc(option, solution, inner_defense_area, outer_defense_area)) for option in options]
     return sorted(options_with_values, key=lambda o: o[1])
 
 
-def get_option(hero, area):
-    option_with_values = get_options_sorted(hero, area)
+def get_option(hero, value_calc, inner_defense_area, outer_defense_area):
+    option_with_values = get_options_sorted(hero, value_calc, inner_defense_area, outer_defense_area)
     # for option in options:
     #    print("Evaluating option %s %s" % (str(option),compute_value(option,solution)), file=sys.stderr)
     _, best_score = option_with_values[0]
@@ -354,7 +354,7 @@ def assist_monster(hero):
     return None
 
 
-def attack(hero, attack_area = 1.9):
+def attack(hero, inner, outer):
 
         global monster, our_mana, ROUND, ATTACK_SHIELD
 
@@ -365,7 +365,8 @@ def attack(hero, attack_area = 1.9):
             rush(hero)
         else:
             print("Hero %s chooses an action" % hero, file=sys.stderr)
-            option = get_option(hero, attack_area)
+            # option = get_option(hero, compute_value, inner, outer)
+            option = get_option(hero, compute_value_enemy_base, inner, outer)
             # Update solution
             monsters = sort_monster(get_monsters(entities), hero, max_distance=VIEW_DISTANCE)
             has_spell = False
@@ -445,14 +446,15 @@ def defend_with_barycenter(monster):
     return int(centroid_x), int(centroid_y)
 
 
-def defend(id, defense_area = 0.1):
+def defend(id, inner, outer):
 
     global monster, our_mana
     print("Hero %s chooses an action" % entities[HERO][i][ID], file=sys.stderr)
-    option = get_option(entities[HERO][i], defense_area)
+    # option = get_option(entities[HERO][i], compute_value, inner, outer)
+    option = get_option(entities[HERO][i], compute_value_base, inner, outer)
     # print("Choosing option %s " % (str(option)), file=sys.stderr)
     # Update solution
-    enemy = filter_and_choose_enemy(entities[HERO][i], defense_area)
+    enemy = filter_and_choose_enemy(entities[HERO][i], outer)
     monster = choose_monster(get_threat_monsters(entities))
     if enemy:
         print("Preparing a spell on enemy %s shield %s range %s " % (str(enemy),enemy[SHIELD],in_range_wind(entities[HERO][i], enemy)), file=sys.stderr)
@@ -551,6 +553,6 @@ if __name__=="__main__":
         solution = []
         for i in range(heroes_per_player):
             if attacker(i):
-                attack(entities[HERO][i])
+                attack(entities[HERO][i], -0.2, 0.5)
             else:
-                defend(i)
+                defend(i, 0, 0.3)
