@@ -7,11 +7,12 @@ import numpy
 # the standard input according to the problem statement.
 
 # Global variables
-
-ATTACK_MONSTER_SPELL_HEALTH = 14
-DEFENSE_MONSTER_SPELL_HEALTH = 12
+ATTACK_MONSTER_SPELL_HEALTH = 13
+DEFENSE_MONSTER_SPELL_HEALTH = 14
 SHIELD_DISTANCE = 5000
-RUSH_LENGTH = 2
+RUSH_LENGTH = 3
+END_GAME = 30
+REAL_END_GAME = 60
 
 # Configure
 
@@ -70,6 +71,10 @@ def distance( A, B):
 def object_distance( A, B):
 
     return distance ((A[X],A[Y]),(B[X],B[Y]))
+
+
+def is_not_friend_monster(monster):
+    return monster[THREAT] != FRIEND
 
 def get_entities(input):
     global enemy_base_position, base_position, entities
@@ -227,7 +232,7 @@ def rush(hero):
     flag = False
     for monster in monsters:
         attack = "WAIT"
-        if can_spell(monster) and in_enemies_base(monster) and in_range_control(entities[HERO][i], monster):
+        if can_spell(monster) and in_enemies_base(monster) and in_range_control(hero, monster):
             attack = "SPELL SHIELD %s" % monster[ID]
             our_mana = our_mana - 10
             ATTACK_SHIELD = RUSH_LENGTH
@@ -295,19 +300,17 @@ def get_option(hero, value_calc, inner_defense_area, outer_defense_area):
 
 
 def can_spell(monster):
-    return our_mana >= 20 and monster[HEALTH] > ATTACK_MONSTER_SPELL_HEALTH and monster[SHIELD] == 0
+    return our_mana >= 30 and monster[HEALTH] > ATTACK_MONSTER_SPELL_HEALTH and monster[SHIELD] == 0
 
 
 def can_spell_no_health_check(monster):
-    return our_mana >= 20 and monster[SHIELD] == 0
+    return our_mana >= 30 and monster[SHIELD] == 0
 
 
-def in_enemies_base(entity):
-    return entity[ENEMY_BASE_DISTANCE] <= SHIELD_DISTANCE
+def in_enemies_base(entity, distance_factor = 1):
+    return entity[ENEMY_BASE_DISTANCE] <= SHIELD_DISTANCE * distance_factor
 
 
-def is_not_friend_monster(monster):
-    return monster[THREAT] != FRIEND
 
 
 def shield(entity):
@@ -329,10 +332,17 @@ def control_hero(entity):
 def move(entity):
     return "MOVE %s %s" % (entity[X], entity[Y])
 
+def is_end_game():
+
+    return ROUND > END_GAME
+
+def is_real_end_game():
+
+    return ROUND > REAL_END_GAME
 
 def get_attack_spell(monster, hero):
     global ATTACK_SHIELD
-    if in_enemies_base(monster):
+    if in_enemies_base(monster, 1.5 if is_end_game() else 1) and not is_not_friend_monster(monster):
         if in_range_control(hero, monster):
             ATTACK_SHIELD = RUSH_LENGTH
             return shield(monster)
@@ -439,8 +449,8 @@ def attack(hero, inner, outer, entities ):
                 if has_spell:
                     our_mana = our_mana - 10
                 elif can_move_for_attack(monster):
-                    #x, y = attack_with_barycenter(monster)
-                    x, y = monster[X], monster[Y]
+                    x, y = attack_with_barycenter(monster)
+                    #x, y = monster[X], monster[Y]
                     action = "MOVE %s %s" % (x, y)
                     has_spell = True
 
@@ -458,8 +468,8 @@ def attack(hero, inner, outer, entities ):
                 wait()
 
 
-DEFENSE = [2]
-PUSH = [2]
+DEFENSE = [1,2]
+PUSH = [1,2]
 ATTACK  = [0]
 
 
@@ -509,11 +519,11 @@ def move_with_barycenter(monster, get_monster):
 
 
 def defend_with_barycenter(monster):
-    move_with_barycenter(monster, get_threat_monster_within_reach)
+    return move_with_barycenter(monster, get_threat_monster_within_reach)
 
 
 def attack_with_barycenter(monster):
-    move_with_barycenter(monster, get_monster_within_reach)
+    return move_with_barycenter(monster, get_monster_within_reach)
 
 
 def defend(id,entities, inner, outer, spell_distance):
@@ -554,8 +564,12 @@ def defend(id,entities, inner, outer, spell_distance):
         our_mana = our_mana - 10
         enemy[SHIELD] = 100
     elif monster:
-        attack = "MOVE %s %s" % (monster[X], monster[Y])
-        if our_mana >= 10 and monster[HEALTH] > DEFENSE_MONSTER_SPELL_HEALTH and monster[SHIELD] == 0:
+
+
+        #attack = "MOVE %s %s" % (monster[X], monster[Y])
+        attack = "MOVE %s %s" % defend_with_barycenter(monster)
+
+        if our_mana >= 10 and (monster[HEALTH] > DEFENSE_MONSTER_SPELL_HEALTH or monster[BASE_DISTANCE] < 800 )and monster[SHIELD] == 0:
             if monster[BASE_DISTANCE] <= 5000:
                 if in_range_wind(entities[HERO][i], monster):
                     attack = wind()
@@ -591,7 +605,7 @@ def get_enemy_position(base_x):
 
 def attacker(i):
 
-    return i in [0,1]
+    return i in ( [0] if is_end_game() else [0,1])
 
 
 def run( input = input):
@@ -619,7 +633,7 @@ def run( input = input):
         solution = []
         for i in range(heroes_per_player):
             if attacker(i):
-                attack(entities[HERO][i], -0.1, 0.9, entities)
+                attack(entities[HERO][i], -0.1, 0.7 if is_real_end_game() else 0.9, entities)
             else:
                 defend(i,entities, 0, 0.2, -0.1)
 
