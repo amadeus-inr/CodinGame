@@ -180,8 +180,8 @@ def compute_value_base(option,solution, inner_defense_area, outer_defense_area):
     prox_cost = proximity_cost(option, solution)
 
     base_distance = distance(option, base_position)
-    within_internal_wall_cost = max(0, (BASE_DISTANCE * (1 + inner_defense_area) - base_distance)*21)
-    above_external_wall_cost = max(0, (base_distance - BASE_DISTANCE * (1 + outer_defense_area))*42)
+    within_internal_wall_cost = max(0, (BASE_DISTANCE_VALUE * (1 + inner_defense_area) - base_distance)*21)
+    above_external_wall_cost = max(0, (base_distance - BASE_DISTANCE_VALUE * (1 + outer_defense_area))*42)
 
     return within_internal_wall_cost + above_external_wall_cost + prox_cost
 
@@ -197,8 +197,8 @@ def compute_value_enemy_base(option,solution, inner_defense_area, outer_defense_
     prox_cost = proximity_cost(option, solution)
 
     enemy_base_distance = distance(option, enemy_base_position)
-    within_internal_wall_cost = max(0, enemy_base_distance - (BASE_DISTANCE * (1 + outer_defense_area))*42)
-    above_external_wall_cost = max(0, (BASE_DISTANCE * (1 + inner_defense_area) - enemy_base_distance)*21)
+    within_internal_wall_cost = max(0, enemy_base_distance - (BASE_DISTANCE_VALUE * (1 + outer_defense_area))*42)
+    above_external_wall_cost = max(0, (BASE_DISTANCE_VALUE * (1 + inner_defense_area) - enemy_base_distance)*21)
 
     return within_internal_wall_cost + above_external_wall_cost + prox_cost
 
@@ -257,6 +257,7 @@ def get_monsters_that_can_reach_base(hero, number_of_defenders = 2):
 
 
 def get_defensive_wind_direction(hero):
+    global base_x, base_y
     return ( 2*hero[X] - base_x, 2*hero[Y] - base_y)
 
 
@@ -328,6 +329,7 @@ def wait():
 
 
 def is_monster_moving_towards_enemy_base(monster):
+    global enemy_base_x, enemy_base_position
     enemy_base_x, _ = enemy_base_position
     if enemy_base_x == 0:
         return monster[VX] < 0 and monster[VY] < 0
@@ -387,7 +389,7 @@ def assist_monster(hero):
     return None
 
 
-def attack(hero, inner, outer):
+def attack(hero, inner, outer, entities ):
 
         global monster, our_mana, ROUND, ATTACK_SHIELD
 
@@ -597,9 +599,9 @@ def run( input = input):
         solution = []
         for i in range(heroes_per_player):
             if attacker(i):
-                attack(entities[HERO][i], -0.2, 0.5)
+                attack(entities[HERO][i], -0.2, 0.5, entities)
             else:
-                defend(i, 0, 0.3)
+                defend(i,entities, 0, 0.3)
 
 if __name__=="__main__":
     run()
