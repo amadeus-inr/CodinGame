@@ -174,7 +174,7 @@ def compute_value_enemy_base(option,solution, inner_defense_area, outer_defense_
     prox_cost = proximity_cost(option, solution)
 
     enemy_base_distance = distance(option, enemy_base_position)
-    within_internal_wall_cost = max(0, enemy_base_distance - (BASE_DISTANCE * (1 + outer_defense_area))*42)
+    within_internal_wall_cost = max(0, (enemy_base_distance - BASE_DISTANCE * (1 + outer_defense_area))*42)
     above_external_wall_cost = max(0, (BASE_DISTANCE * (1 + inner_defense_area) - enemy_base_distance)*21)
 
     return within_internal_wall_cost + above_external_wall_cost + prox_cost
@@ -193,7 +193,7 @@ def get_points_on_circumference(x, y, number_of_points=32, r=800):
 
 
 def get_enemy_hero_in_range(hero):
-    return sorted([enemy for enemy in get_enemies(entities) if in_range_control(hero, enemy) and can_spell_no_health_check(enemy)], lambda x: distance((x[X], x[Y]), enemy_base_position))
+    return sorted([enemy for enemy in get_enemies(entities) if in_range_control(hero, enemy) and can_spell_no_health_check(enemy)], key = lambda x: distance((x[X], x[Y]), enemy_base_position))
 
 
 ATTACK_SHIELD = 0
