@@ -165,137 +165,201 @@ def rush(hero):
         print("MOVE %s %s"%(enemy_base_x,enemy_base_y))
 
 
+def get_option(hero, area):
+    # Write an action using print
+    # To debug: print("Debug messages...", file=sys.stderr)
+    # Get options
+    options = get_options(hero)
+    # Compute value
+    ## Minimizing cost
+    options = sorted(options, key=lambda o: compute_value(o, solution, area))
+    # for option in options:
+    #    print("Evaluating option %s %s" % (str(option),compute_value(option,solution)), file=sys.stderr)
+    option = options[0]
+    # print("Choosing option %s " % (str(option)), file=sys.stderr)
+    return option
 
-def attack(defense_area,hero):
+
+def can_attack(monster):
+    return our_mana >= 20 and monster[HEALTH] > ATTACK_MONSTER_SPELL_HEALTH and monster[SHIELD] == 0
+
+
+def in_enemies_base(monster):
+    return monster[ENEMY_BASE_DISTANCE] <= SHIELD_DISTANCE
+
+
+def is_not_friend_monster(monster):
+    return monster[THREAT] != FRIEND
+
+
+def shield(entity):
+    return "SPELL SHIELD %s" % entity[ID]
+
+
+def wind():
+    return "SPELL WIND %s %s" % (enemy_base_x, enemy_base_y)
+
+
+def control(monster):
+    return "SPELL CONTROL %s %s %s" % (monster[ID], enemy_base_x, enemy_base_y)
+
+
+def get_attack_spell(monster):
+    if in_enemies_base(monster):
+        if in_range_control(entities[HERO][i], monster):
+            ATTACK_SHIELD = RUSH_LENGTH
+            return shield(monster)
+    elif monster[ENEMY_BASE_DISTANCE] <= 6000:
+        if in_range_wind(entities[HERO][i], monster):
+            return wind()
+    elif is_not_friend_monster(monster) and in_range_control(entities[HERO][i], monster):
+        return control(monster)
+    return None
+
+
+def wait():
+    print("WAIT")
+
+
+def attack(hero, attack_area = 1.9):
+
         global monster, our_mana, ROUND, ATTACK_SHIELD
+
+        def can_move(monster):
+            return monster[THREAT] != FRIEND and distance((monster[X], monster[Y]), enemy_base_position) < 11000
 
         if not ATTACK_SHIELD == 0:
             rush(hero)
         else:
             print("Hero %s chooses an action" % hero, file=sys.stderr)
-            # Write an action using print
-            # To debug: print("Debug messages...", file=sys.stderr)
-            # Get options
-            options = get_options(hero)
-            # Compute value
-            ## Minimizing cost
-            options = sorted(options, key=lambda o: compute_value(o, solution, defense_area))
-            # for option in options:
-            #    print("Evaluating option %s %s" % (str(option),compute_value(option,solution)), file=sys.stderr)
-            option = options[0]
-            # print("Choosing option %s " % (str(option)), file=sys.stderr)
+            option = get_option(hero, attack_area)
             # Update solution
             monsters = sort_monster(get_monsters(entities), hero, max_distance=VIEW_DISTANCE)
-            flag = False
-            for monster in monsters:
-                attack = "WAIT"
-                if our_mana >= 20 and monster[HEALTH] > ATTACK_MONSTER_SPELL_HEALTH and monster[SHIELD] == 0:
-                    if monster[ENEMY_BASE_DISTANCE] <= SHIELD_DISTANCE:
-                        if in_range_control(entities[HERO][i], monster):
-                            attack = "SPELL SHIELD %s" % monster[ID]
-                            our_mana = our_mana - 10
-                            ATTACK_SHIELD = RUSH_LENGTH
-                            flag = True
-                    elif monster[ENEMY_BASE_DISTANCE] <= 6000:
-                        if in_range_wind(entities[HERO][i], monster):
-                            attack = "SPELL WIND %s %s" % (enemy_base_x, enemy_base_y)
-                            our_mana = our_mana - 10
-                            flag = True
-                    else:
-                        if monster[THREAT] != FRIEND and in_range_control(entities[HERO][i], monster):
-                            attack = "SPELL CONTROL %s %s %s" % (monster[ID], enemy_base_x, enemy_base_y)
-                            our_mana = our_mana - 10
-                            flag = True
-                if not flag:
-                    if monster[THREAT] != FRIEND and distance((monster[X], monster[Y]),enemy_base_position) < 11000:
-                        attack = "MOVE %s %s" % (monster[X], monster[Y])
-                        flag = True
+            has_spell = False
 
-                if flag:
+            for monster in monsters:
+                action = "WAIT"
+
+                if can_attack(monster):
+                    spell = get_attack_spell(monster)
+                    if spell:
+                        action = spell
+                        has_spell = True
+
+                if has_spell:
+                    our_mana = our_mana - 10
+                elif can_move(monster):
+                    action = "MOVE %s %s" % (monster[X], monster[Y])
+                    has_spell = True
+
+                if has_spell:
                     print("Attack monster %s" % str(monster), file=sys.stderr)
                     solution.append((monster[X], monster[Y]))
-                    print("%s" % attack)
+                    print("%s" % action)
                     break
 
-            if option and not flag:
+            if option and not has_spell:
                 print("Move to option %s %s" % option, file=sys.stderr)
                 solution.append(option)
                 print("MOVE %s %s" % option)
-            elif not flag:
-                print("WAIT")
+            elif not has_spell:
+                wait()
+
 
 DEFENSE = [1,2]
 PUSH = [1]
 ATTACK  = [0]
 
-def defend(defense_area,id):
+
+def filter_and_choose_monster(hero, defense_area):
+    return choose_close_monster(
+        filter(lambda x: distance((x[X], x[Y]), (base_x, base_y)) < BASE_DISTANCE * (1 + defense_area),
+               get_enemies(entities)), hero)
+
+
+def get_to_be_shielded():
+    return filter(lambda x: entities[HERO][x][SHIELD] < 1,
+                  sorted(DEFENSE, key=lambda x: entities[HERO][x][SHIELD], reverse=True))
+
+
+def can_spell_defensive_wind(id, i):
+    return id in PUSH and enemy[SHIELD] < 1 and in_range_wind(entities[HERO][i], enemy)
+
+
+def defend(id, defense_area = 0.1):
+
     global monster, our_mana
     print("Hero %s chooses an action" % entities[HERO][i][ID], file=sys.stderr)
-    # Write an action using print
-    # To debug: print("Debug messages...", file=sys.stderr)
-    # Get options
-    options = get_options(entities[HERO][i])
-    # Compute value
-    ## Minimizing cost
-    options = sorted(options, key=lambda o: compute_value(o, solution,defense_area))
-    # for option in options:
-    #    print("Evaluating option %s %s" % (str(option),compute_value(option,solution)), file=sys.stderr)
-    option = options[0]
+    option = get_option(entities[HERO][i], defense_area)
     # print("Choosing option %s " % (str(option)), file=sys.stderr)
     # Update solution
-    enemy = choose_close_monster(filter(lambda x: distance((x[X], x[Y]),(base_x,base_y)) < BASE_DISTANCE * (1 + defense_area) ,get_enemies(entities)),entities[HERO][i])
+    enemy = filter_and_choose_monster(entities[HERO][i], defense_area)
     monster = choose_monster(get_threat_monsters(entities))
     if enemy:
         print("Preparing a spell on enemy %s shield %s range %s " % (str(enemy),enemy[SHIELD],in_range_wind(entities[HERO][i], enemy)), file=sys.stderr)
 
     attack  = ""
     if enemy:
-        if id in PUSH and enemy[SHIELD] < 1 and in_range_wind(entities[HERO][i], enemy) :
+        if can_spell_defensive_wind(id, i):
             print("Trying to push %s" % str(enemy), file=sys.stderr)
-
-            our_mana = our_mana - 10
-            attack = "SPELL WIND %s %s" % (enemy_base_x, enemy_base_y)
-            enemy[SHIELD] = 100
+            attack = wind()
             print("Attack enemy %s" % str(enemy), file=sys.stderr)
             solution.append((enemy[X], enemy[Y]))
             print("%s" % attack)
         if id not in PUSH or enemy[SHIELD] >0:
             print("Trying to shield" , file=sys.stderr)
-            to_be_shielded = filter(lambda x: entities[HERO][x][SHIELD] < 1,sorted(DEFENSE,key = lambda x: entities[HERO][x][SHIELD],reverse=True))
+            to_be_shielded = get_to_be_shielded()
 
             id = next(to_be_shielded,None)
-            if not id is None:
+            if id is not None:
                 hero = entities[HERO][id]
-                attack = "SPELL SHIELD %s" % (hero[ID])
-                our_mana = our_mana - 10
-                enemy[SHIELD] = 100
+                attack = shield(hero)
                 print("Shield %s" % str(hero[ID]), file=sys.stderr)
                 solution.append((hero[X], hero[Y]))
                 print("%s" % attack)
-    if not attack:
-        if monster :
-            attack = "MOVE %s %s" % (monster[X], monster[Y])
-            if our_mana >= 10 and monster[HEALTH] > DEFENSE_MONSTER_SPELL_HEALTH and monster[SHIELD] == 0:
-                if monster[BASE_DISTANCE] <= 5000:
-                    if in_range_wind(entities[HERO][i], monster):
-                        attack = "SPELL WIND %s %s" % (enemy_base_x, enemy_base_y)
-                        our_mana = our_mana - 10
-                        monster[SHIELD] = 100
-                else:
-                    if in_range_control(entities[HERO][i], monster):
-                        attack = "SPELL CONTROL %s %s %s" % (monster[ID], enemy_base_x, enemy_base_y)
-                        our_mana = our_mana - 10
-                        monster[SHIELD] = 200
-            print("Attack monster %s" % str(monster), file=sys.stderr)
-            solution.append((monster[X], monster[Y]))
-            print("%s" % attack)
 
-        elif option:
-            print("Move to option %s %s" % option, file=sys.stderr)
-            solution.append(option)
-            print("MOVE %s %s" % option)
-        else:
-            print("WAIT")
+    if attack:
+        our_mana = our_mana - 10
+        enemy[SHIELD] = 100
+    elif monster:
+        attack = "MOVE %s %s" % (monster[X], monster[Y])
+        if our_mana >= 10 and monster[HEALTH] > DEFENSE_MONSTER_SPELL_HEALTH and monster[SHIELD] == 0:
+            if monster[BASE_DISTANCE] <= 5000:
+                if in_range_wind(entities[HERO][i], monster):
+                    attack = wind()
+                    our_mana = our_mana - 10
+                    monster[SHIELD] = 100
+            else:
+                if in_range_control(entities[HERO][i], monster):
+                    attack = control(monster)
+                    our_mana = our_mana - 10
+                    monster[SHIELD] = 200
+        print("Attack monster %s" % str(monster), file=sys.stderr)
+        solution.append((monster[X], monster[Y]))
+        print("%s" % attack)
+
+    elif option:
+        print("Move to option %s %s" % option, file=sys.stderr)
+        solution.append(option)
+        print("MOVE %s %s" % option)
+    else:
+        print("WAIT")
+
+
+def get_enemy_position(base_x):
+    global enemy_base_x, enemy_base_y
+    if base_x == 0:
+        enemy_base_x = 17630
+        enemy_base_y = 9000
+    else:
+        enemy_base_x = 0
+        enemy_base_y = 0
+    return (enemy_base_x, enemy_base_y)
+
+
+def attacker(i):
+
+    return i == 0
 
 ATTACK_MONSTER_SPELL_HEALTH = 14
 DEFENSE_MONSTER_SPELL_HEALTH = 10
@@ -303,16 +367,10 @@ SHIELD_DISTANCE = 5000
 RUSH_LENGTH = 2
 
 if __name__=="__main__":
+
     base_x, base_y = [int(i) for i in input().split()]
     base_position = (base_x, base_y)
-    if base_x == 0:
-        enemy_base_x = 17630
-        enemy_base_y = 9000
-    else:
-        enemy_base_x = 0
-        enemy_base_y = 0
-    enemy_base_position = (enemy_base_x, enemy_base_y)
-
+    enemy_base_position = get_enemy_position(base_x)
 
     heroes_per_player = int(input())
     # game loop
@@ -333,7 +391,7 @@ if __name__=="__main__":
         enemy = choose_monster(monsters)
         solution = []
         for i in range(heroes_per_player):
-            if i == 0:
-                attack(1.9, entities[HERO][i])
+            if attacker(i):
+                attack(entities[HERO][i])
             else:
-                defend(0.1,i)
+                defend(i)
