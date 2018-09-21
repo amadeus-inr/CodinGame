@@ -191,7 +191,8 @@ def can_monster_reach_before_being_killed(monster, distace_to_base, numer_of_def
 
 def get_monsters_that_can_reach_base(hero, number_of_defenders = 2):
     return [monster for monster in get_unprotected_monster_rush_for_wind(hero) if
-            can_monster_reach_before_being_killed(monster, hero, number_of_defenders)]
+            can_monster_reach_before_being_killed(monster, distance(base_position, (monster[X], monster[Y])),
+                                                  number_of_defenders)]
 
 
 def get_defensive_wind_direction(hero):
