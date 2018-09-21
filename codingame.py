@@ -173,6 +173,31 @@ def rush(hero):
         print("MOVE %s %s"%(enemy_base_x,enemy_base_y))
 
 
+def get_unprotected_enemy_rush_for_wind(hero):
+
+    enemies = sort_monster(get_enemies(entities), hero, max_distance=VIEW_DISTANCE)
+    return [enemy for enemy in enemies if in_range_wind(hero, enemy) and enemy[SHIELD] == 0]
+
+
+def get_unprotected_monster_rush_for_wind(hero):
+
+    monsters = sort_monster(get_monsters(entities), hero, max_distance=VIEW_DISTANCE)
+    return [monster for monster in monsters if in_range_wind(hero, monster) and monster[SHIELD] == 0]
+
+
+def can_monster_reach_before_being_killed(monster, distace_to_base, numer_of_defenders = 2):
+    return monster[HEALTH] > int((distace_to_base - 300)*2*numer_of_defenders/400)
+
+
+def get_monsters_that_can_reach_base(hero, number_of_defenders = 2):
+    return [monster for monster in get_unprotected_monster_rush_for_wind(hero) if
+            can_monster_reach_before_being_killed(monster, hero, number_of_defenders)]
+
+
+def get_defensive_wind_direction(hero):
+    return ( 2*hero[X] - base_x, 2*hero[Y] - base_y)
+
+
 def get_option(hero, area):
     # Write an action using print
     # To debug: print("Debug messages...", file=sys.stderr)
