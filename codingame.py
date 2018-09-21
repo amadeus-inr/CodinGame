@@ -191,25 +191,36 @@ def get_points_on_circumference(x, y, number_of_points=32, r=800):
     return filter(lambda a: a[0] >= 0 and a[1] >= 0 and a[0] <= 17630 and a[1] <= 9000,
                   [(int(x + r * math.cos(angle * i)), int(y + r * math.sin(angle * i))) for i in range(number_of_points)])
 
+
+def get_enemy_hero_in_range(hero):
+    return sorted([enemy for enemy in get_enemies(entities) if in_range_control(hero, enemy) and can_spell_no_health_check(enemy)], lambda x: distance((x[X], x[Y]), enemy_base_position))
+
+
 ATTACK_SHIELD = 0
 def rush(hero):
-    global ATTACK_SHIELD
+    global ATTACK_SHIELD, our_mana
 
     monsters = sort_monster_close_enemy(get_monsters(entities), hero, max_distance=VIEW_DISTANCE)
     flag = False
     for monster in monsters:
         attack = "WAIT"
-        if our_mana >= 20 and monster[HEALTH] > ATTACK_MONSTER_SPELL_HEALTH and monster[SHIELD] == 0:
-            if monster[ENEMY_BASE_DISTANCE] <= SHIELD_DISTANCE:
-                if in_range_control(entities[HERO][i], monster):
-                    attack = "SPELL SHIELD %s" % monster[ID]
-                    our_mana = our_mana - 10
-                    ATTACK_SHIELD = RUSH_LENGTH
-                    flag = True
+        if can_spell(monster) and in_enemies_base(monster) and in_range_control(entities[HERO][i], monster):
+            attack = "SPELL SHIELD %s" % monster[ID]
+            our_mana = our_mana - 10
+            ATTACK_SHIELD = RUSH_LENGTH
+            flag = True
+            print("%s" % attack)
+            break
     if not flag:
-        print("Rush!!!!", file=sys.stderr)
-        ATTACK_SHIELD = ATTACK_SHIELD - 1
-        print("MOVE %s %s"%(enemy_base_x,enemy_base_y))
+        enemies_in_control_range = get_enemy_hero_in_range(hero)
+        if enemies_in_control_range:
+            enemy = enemies_in_control_range[0]
+            print(control_hero(enemy))
+            our_mana = our_mana - 10
+        else:
+            print("Rush!!!!", file=sys.stderr)
+            ATTACK_SHIELD = ATTACK_SHIELD - 1
+            print("MOVE %s %s"%(enemy_base_x,enemy_base_y))
 
 
 def get_unprotected_enemy_rush_for_wind(hero):
@@ -263,6 +274,10 @@ def can_spell(monster):
     return our_mana >= 20 and monster[HEALTH] > ATTACK_MONSTER_SPELL_HEALTH and monster[SHIELD] == 0
 
 
+def can_spell_no_health_check(monster):
+    return our_mana >= 20 and monster[SHIELD] == 0
+
+
 def in_enemies_base(entity):
     return entity[ENEMY_BASE_DISTANCE] <= SHIELD_DISTANCE
 
@@ -281,6 +296,10 @@ def wind():
 
 def control(entity):
     return "SPELL CONTROL %s %s %s" % (entity[ID], enemy_base_x, enemy_base_y)
+
+
+def control_hero(entity):
+    return "SPELL CONTROL %s %s %s" % (entity[ID], entity[X], base_y)
 
 
 def move(entity):
@@ -430,7 +449,7 @@ def get_to_be_shielded():
                   sorted(DEFENSE, key=lambda x: entities[HERO][x][SHIELD], reverse=True))
 
 
-def can_spell_defensive_wind(id, i):
+def can_spell_defensive_wind(id, i, enemy):
     return id in PUSH and enemy[SHIELD] < 1 and in_range_wind(entities[HERO][i], enemy)
 
 
@@ -487,7 +506,7 @@ def defend(id, inner, outer):
 
     attack  = ""
     if enemy:
-        if can_spell_defensive_wind(id, i):
+        if can_spell_defensive_wind(id, i, enemy):
             print("Trying to push %s" % str(enemy), file=sys.stderr)
             attack = wind()
             print("Attack enemy %s" % str(enemy), file=sys.stderr)
