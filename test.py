@@ -17,3 +17,9 @@ print(2 == codingame.choose_monster([monster1,monster2])["id"])
 
 
 print(min([{"A":1,"B":2},{"A":1,"B":1}],key=lambda a: a["A"]))
+
+enemy_base_x = 2
+enemy_base_y = 2
+base_x = 0
+base_y = 0
+print(['MOVE 1.0 1.0']==codingame.walk_towards_enemy({"X":0,"Y":0},enemy_base_x,enemy_base_y,base_x,base_y))

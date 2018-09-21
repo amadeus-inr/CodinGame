@@ -32,6 +32,14 @@ MONSTER = 0
 HERO = 1
 ENEMY = 2
 
+def walk_towards_enemy( hero, enemy_base_x,enemy_base_y,base_x,base_y,rate = 0.5 ):
+    target = rate * (numpy.array((enemy_base_x,enemy_base_y)) - numpy.array((base_x,base_y)))
+
+    distance_target = distance((hero[X],hero[Y]),target)
+
+    if distance_target > 0:
+        return ["MOVE %s %s"%(target[0],target[1])]
+    return []
 
 def distance( A, B):
 
