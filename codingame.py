@@ -431,7 +431,7 @@ def attack(hero, inner, outer, entities ):
                 action = "WAIT"
 
                 if can_spell(monster):
-                    spell = get_attack_spell(monster)
+                    spell = get_attack_spell(monster, hero)
                     if spell:
                         action = spell
                         has_spell = True
@@ -465,7 +465,7 @@ ATTACK  = [0]
 
 def filter_and_choose_enemy(hero, defense_area):
     return choose_close_monster(
-        filter(lambda x: distance((x[X], x[Y]), (base_x, base_y)) < BASE_DISTANCE * (1 + defense_area),
+        filter(lambda x: distance((x[X], x[Y]), (base_x, base_y)) < BASE_DISTANCE_VALUE * (1 + defense_area),
                get_enemies(entities)), hero)
 
 
