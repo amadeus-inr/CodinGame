@@ -198,14 +198,18 @@ def get_defensive_wind_direction(hero):
     return ( 2*hero[X] - base_x, 2*hero[Y] - base_y)
 
 
-def get_option(hero, area):
+def get_options_sorted(hero, area):
     # Write an action using print
     # To debug: print("Debug messages...", file=sys.stderr)
     # Get options
     options = get_options(hero)
     # Compute value
     ## Minimizing cost
-    options = sorted(options, key=lambda o: compute_value(o, solution, area))
+    return sorted(options, key=lambda o: compute_value(o, solution, area))
+
+
+def get_option(hero, area):
+    options = get_options_sorted(hero, area)
     # for option in options:
     #    print("Evaluating option %s %s" % (str(option),compute_value(option,solution)), file=sys.stderr)
     option = options[0]
@@ -304,7 +308,7 @@ PUSH = [1]
 ATTACK  = [0]
 
 
-def filter_and_choose_monster(hero, defense_area):
+def filter_and_choose_enemy(hero, defense_area):
     return choose_close_monster(
         filter(lambda x: distance((x[X], x[Y]), (base_x, base_y)) < BASE_DISTANCE * (1 + defense_area),
                get_enemies(entities)), hero)
@@ -319,6 +323,27 @@ def can_spell_defensive_wind(id, i):
     return id in PUSH and enemy[SHIELD] < 1 and in_range_wind(entities[HERO][i], enemy)
 
 
+def get_threat_monster_within_reach(hero):
+    return [monster for monster in get_threat_monsters(entities) if object_distance(hero, monster) < 1600]
+
+
+def get_center(entities):
+    return sum(entity[X] for entity in entities) / len(entities), sum(entity[Y] for entity in entities) / len(entities)
+
+
+def defend_with_barycenter(monster):
+    centroid_x, centroid_y = None, None
+    monsters_within_reach = get_threat_monster_within_reach(monster)
+
+    if monsters_within_reach:
+        centroid_x, centroid_y = get_center(monsters_within_reach)
+        if distance((monster[X], monster[Y]), (centroid_x, centroid_y)) >= 800:
+            centroid_x = monster[X] + (centroid_x - monster[X])*799/distance((monster[X], monster[Y]), (centroid_x, centroid_y))
+            centroid_y = monster[Y] + (centroid_y - monster[Y]) * 799 / distance((monster[X], monster[Y]), (centroid_x, centroid_y))
+
+    return int(centroid_x), int(centroid_y)
+
+
 def defend(id, defense_area = 0.1):
 
     global monster, our_mana
@@ -326,7 +351,7 @@ def defend(id, defense_area = 0.1):
     option = get_option(entities[HERO][i], defense_area)
     # print("Choosing option %s " % (str(option)), file=sys.stderr)
     # Update solution
-    enemy = filter_and_choose_monster(entities[HERO][i], defense_area)
+    enemy = filter_and_choose_enemy(entities[HERO][i], defense_area)
     monster = choose_monster(get_threat_monsters(entities))
     if enemy:
         print("Preparing a spell on enemy %s shield %s range %s " % (str(enemy),enemy[SHIELD],in_range_wind(entities[HERO][i], enemy)), file=sys.stderr)
