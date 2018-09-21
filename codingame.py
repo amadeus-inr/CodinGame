@@ -324,22 +324,27 @@ def can_spell_defensive_wind(id, i):
 
 
 def get_threat_monster_within_reach(hero):
-    return [monster for monster in get_threat_monsters(entities) if object_distance(hero, monster) < 1600]
+    return [monster for monster in get_threat_monsters(entities) if monster != hero and object_distance(hero, monster) < 1600]
 
 
 def get_center(entities):
     return sum(entity[X] for entity in entities) / len(entities), sum(entity[Y] for entity in entities) / len(entities)
 
 
+def get_closer_to_monster(center, dist, target):
+    return target + (center - target) * 799 / dist
+
+
 def defend_with_barycenter(monster):
-    centroid_x, centroid_y = None, None
+    centroid_x, centroid_y = monster[X], monster[Y]
     monsters_within_reach = get_threat_monster_within_reach(monster)
 
     if monsters_within_reach:
         centroid_x, centroid_y = get_center(monsters_within_reach)
-        if distance((monster[X], monster[Y]), (centroid_x, centroid_y)) >= 800:
-            centroid_x = monster[X] + (centroid_x - monster[X])*799/distance((monster[X], monster[Y]), (centroid_x, centroid_y))
-            centroid_y = monster[Y] + (centroid_y - monster[Y]) * 799 / distance((monster[X], monster[Y]), (centroid_x, centroid_y))
+        dist = distance((monster[X], monster[Y]), (centroid_x, centroid_y))
+        if dist >= 800:
+            centroid_x = get_closer_to_monster(centroid_x, dist, monster[X])
+            centroid_y = get_closer_to_monster(centroid_y, dist, monster[Y])
 
     return int(centroid_x), int(centroid_y)
 
