@@ -491,7 +491,7 @@ def attack_with_barycenter(monster):
     move_with_barycenter(monster, get_monster_within_reach)
 
 
-def defend(id, inner, outer):
+def defend(id, inner, outer, spell_distance):
 
     global monster, our_mana
     print("Hero %s chooses an action" % entities[HERO][i][ID], file=sys.stderr)
@@ -499,7 +499,7 @@ def defend(id, inner, outer):
     option = get_option(entities[HERO][i], compute_value_base, inner, outer)
     # print("Choosing option %s " % (str(option)), file=sys.stderr)
     # Update solution
-    enemy = filter_and_choose_enemy(entities[HERO][i], outer)
+    enemy = filter_and_choose_enemy(entities[HERO][i], spell_distance)
     monster = choose_monster(get_threat_monsters(entities))
     if enemy:
         print("Preparing a spell on enemy %s shield %s range %s " % (str(enemy),enemy[SHIELD],in_range_wind(entities[HERO][i], enemy)), file=sys.stderr)
@@ -567,8 +567,8 @@ def attacker(i):
 
     return i == 0
 
-ATTACK_MONSTER_SPELL_HEALTH = 14
-DEFENSE_MONSTER_SPELL_HEALTH = 10
+ATTACK_MONSTER_SPELL_HEALTH = 16
+DEFENSE_MONSTER_SPELL_HEALTH = 14
 SHIELD_DISTANCE = 5000
 RUSH_LENGTH = 2
 
@@ -600,4 +600,4 @@ if __name__=="__main__":
             if attacker(i):
                 attack(entities[HERO][i], -0.2, 0.5)
             else:
-                defend(i, 0, 0.3)
+                defend(i, 0, 0.3, -0.2)
