@@ -71,7 +71,7 @@ def object_distance( A, B):
     return distance ((A[X],A[Y]),(B[X],B[Y]))
 
 def get_entities(input):
-    global enemy_base_position
+    global enemy_base_position, base_position, entities
     print("Get entities", file=sys.stderr)
     entities = {MONSTER: [], HERO: [], ENEMY: []}
     entity_count = int(input())
@@ -153,6 +153,7 @@ def potential_monster_to_target(entities, hero):
 
 
 def compute_value(option,solution, defense_area):
+    global base_position
     cost = 0
     base_distance = distance(option, base_position)
     for hero in solution:
@@ -233,15 +234,16 @@ def control(monster):
     return "SPELL CONTROL %s %s %s" % (monster[ID], enemy_base_x, enemy_base_y)
 
 
-def get_attack_spell(monster):
+def get_attack_spell(monster, hero):
+    global ATTACK_SHIELD
     if in_enemies_base(monster):
-        if in_range_control(entities[HERO][i], monster):
+        if in_range_control(hero, monster):
             ATTACK_SHIELD = RUSH_LENGTH
             return shield(monster)
     elif monster[ENEMY_BASE_DISTANCE] <= 6000:
-        if in_range_wind(entities[HERO][i], monster):
+        if in_range_wind(hero, monster):
             return wind()
-    elif is_not_friend_monster(monster) and in_range_control(entities[HERO][i], monster):
+    elif is_not_friend_monster(monster) and in_range_control(hero, monster):
         return control(monster)
     return None
 
@@ -250,7 +252,7 @@ def wait():
     print("WAIT")
 
 
-def attack(hero, attack_area = 1.9):
+def attack(hero, entities, attack_area = 1.9):
 
         global monster, our_mana, ROUND, ATTACK_SHIELD
 
@@ -270,7 +272,7 @@ def attack(hero, attack_area = 1.9):
                 action = "WAIT"
 
                 if can_attack(monster):
-                    spell = get_attack_spell(monster)
+                    spell = get_attack_spell(monster, hero)
                     if spell:
                         action = spell
                         has_spell = True

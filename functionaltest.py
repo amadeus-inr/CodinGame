@@ -21,6 +21,10 @@ game = [["0 0", "3", "3 0","3 0", "3", start_hero1, start_hero2, start_hero3]]
 round = 0
 calls = 0
 
+# MOVE 675 454
+# MOVE 10 820
+# MOVE 810 30
+
 def input():
     global calls, game, round
     print("------------Round: %s , Call %s---------------" % (round, calls) )
