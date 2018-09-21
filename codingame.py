@@ -8,8 +8,8 @@ import numpy
 
 # Global variables
 
-ATTACK_MONSTER_SPELL_HEALTH = 16
-DEFENSE_MONSTER_SPELL_HEALTH = 14
+ATTACK_MONSTER_SPELL_HEALTH = 14
+DEFENSE_MONSTER_SPELL_HEALTH = 12
 SHIELD_DISTANCE = 5000
 RUSH_LENGTH = 2
 
@@ -222,7 +222,7 @@ def get_enemy_hero_in_range(hero):
 ATTACK_SHIELD = 0
 def rush(hero):
     global ATTACK_SHIELD, entities, our_mana
-
+    i = int(hero[ID])
     monsters = sort_monster_close_enemy(get_monsters(entities), hero, max_distance=VIEW_DISTANCE)
     flag = False
     for monster in monsters:
@@ -241,7 +241,7 @@ def rush(hero):
             print(control_hero(enemy))
             our_mana = our_mana - 10
         else:
-            print("Rush!!!!", file=sys.stderr)
+            print("Hero %s Rush!!!!"%hero[ID], file=sys.stderr)
             ATTACK_SHIELD = ATTACK_SHIELD - 1
             print("MOVE %s %s"%(enemy_base_x,enemy_base_y))
 
@@ -458,8 +458,8 @@ def attack(hero, inner, outer, entities ):
                 wait()
 
 
-DEFENSE = [1,2]
-PUSH = [1]
+DEFENSE = [2]
+PUSH = [2]
 ATTACK  = [0]
 
 
@@ -591,7 +591,7 @@ def get_enemy_position(base_x):
 
 def attacker(i):
 
-    return i == 0
+    return i in [0,1]
 
 
 def run( input = input):
@@ -619,9 +619,9 @@ def run( input = input):
         solution = []
         for i in range(heroes_per_player):
             if attacker(i):
-                attack(entities[HERO][i], -0.2, 0.5, entities)
+                attack(entities[HERO][i], -0.1, 0.9, entities)
             else:
-                defend(i,entities, 0, 0.3, -0.2)
+                defend(i,entities, 0, 0.2, -0.1)
 
 if __name__=="__main__":
     run()
