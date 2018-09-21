@@ -1,3 +1,4 @@
+import random
 import sys
 import math
 import numpy
@@ -141,6 +142,34 @@ def compute_value(option,solution, defense_area):
     base_penalty = -100000 if base_distance > BASE_DISTANCE * (1 + defense_area) else 1
     return - base_penalty * base_distance + cost
 
+
+def compute_value_base(option,solution, inner_defense_area, outer_defense_area):
+    # inner_defense_area < outer_defense_area
+    prox_cost = proximity_cost(option, solution)
+
+    base_distance = distance(option, base_position)
+    within_internal_wall_cost = max(0, (BASE_DISTANCE * (1 + inner_defense_area) - base_distance)*21)
+    above_external_wall_cost = max(0, (base_distance - BASE_DISTANCE * (1 + outer_defense_area))*42)
+
+    return within_internal_wall_cost + above_external_wall_cost + prox_cost
+
+def proximity_cost(option, solution):
+    cost = 0
+    for hero in solution:
+        hero_distance = distance(hero, option)
+        cost = cost + max(0, 2 * VIEW_DISTANCE - hero_distance)
+    return cost
+
+def compute_value_enemy_base(option,solution, inner_defense_area, outer_defense_area):
+    # inner_defense_area < outer_defense_area
+    prox_cost = proximity_cost(option, solution)
+
+    enemy_base_distance = distance(option, enemy_base_position)
+    within_internal_wall_cost = max(0, enemy_base_distance - (BASE_DISTANCE * (1 + inner_defense_area))*42)
+    above_external_wall_cost = max(0, (BASE_DISTANCE * (1 + outer_defense_area) - enemy_base_distance)*21)
+
+    return within_internal_wall_cost + above_external_wall_cost + prox_cost
+
 def in_range_control(hero,monster):
     return object_distance(hero, monster) <=2200
 
@@ -206,16 +235,18 @@ def get_options_sorted(hero, area):
     options = get_options(hero)
     # Compute value
     ## Minimizing cost
-    return sorted(options, key=lambda o: compute_value(o, solution, area))
+    options_with_values = [(option, compute_value(option, solution, area)) for option in options]
+    return sorted(options_with_values, key=lambda o: o[1])
 
 
 def get_option(hero, area):
-    options = get_options_sorted(hero, area)
+    option_with_values = get_options_sorted(hero, area)
     # for option in options:
     #    print("Evaluating option %s %s" % (str(option),compute_value(option,solution)), file=sys.stderr)
-    option = options[0]
+    _, best_score = option_with_values[0]
     # print("Choosing option %s " % (str(option)), file=sys.stderr)
-    return option
+    best_options = [option[0] for option in option_with_values if option[1] < (best_score + 1)]
+    return random.choice(best_options)
 
 
 def can_attack(monster):
