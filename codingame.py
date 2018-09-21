@@ -1,3 +1,4 @@
+import random
 import sys
 import math
 import numpy
@@ -115,7 +116,16 @@ def choose_close_monster(monsters,hero):
     return threat[0] if threat else {}
 
 
-def sort_monster(monsters,hero, max_distance = -1):
+def sort_monster_close_enemy(monsters,hero, max_distance = -1):
+    if not monsters:
+        return {}
+    if max_distance < 0:
+        return sorted(monsters, key=lambda x: object_distance(x, hero))
+    else:
+        return sorted([monster for monster in monsters if object_distance(monster,hero) <= max_distance], key = lambda x: distance((x[X], x[Y]),enemy_base_position))
+
+
+def sort_monster_close_hero(monsters, hero, max_distance = -1):
     if not monsters:
         return {}
     if max_distance < 0:
@@ -152,7 +162,7 @@ def potential_monster_to_target(entities, hero):
 
 
 
-def compute_value(option,solution, defense_area):
+def compute_value(option,solution, defense_area, _):
     global base_position
     cost = 0
     base_distance = distance(option, base_position)
@@ -164,8 +174,37 @@ def compute_value(option,solution, defense_area):
     base_penalty = -100000 if base_distance > BASE_DISTANCE_VALUE * (1 + defense_area) else 1
     return - base_penalty * base_distance + cost
 
+
+def compute_value_base(option,solution, inner_defense_area, outer_defense_area):
+    # inner_defense_area < outer_defense_area
+    prox_cost = proximity_cost(option, solution)
+
+    base_distance = distance(option, base_position)
+    within_internal_wall_cost = max(0, (BASE_DISTANCE * (1 + inner_defense_area) - base_distance)*21)
+    above_external_wall_cost = max(0, (base_distance - BASE_DISTANCE * (1 + outer_defense_area))*42)
+
+    return within_internal_wall_cost + above_external_wall_cost + prox_cost
+
+def proximity_cost(option, solution):
+    cost = 0
+    for hero in solution:
+        hero_distance = distance(hero, option)
+        cost = cost + max(0, 2 * VIEW_DISTANCE - hero_distance)
+    return cost
+
+def compute_value_enemy_base(option,solution, inner_defense_area, outer_defense_area):
+    # inner_defense_area < outer_defense_area
+    prox_cost = proximity_cost(option, solution)
+
+    enemy_base_distance = distance(option, enemy_base_position)
+    within_internal_wall_cost = max(0, enemy_base_distance - (BASE_DISTANCE * (1 + outer_defense_area))*42)
+    above_external_wall_cost = max(0, (BASE_DISTANCE * (1 + inner_defense_area) - enemy_base_distance)*21)
+
+    return within_internal_wall_cost + above_external_wall_cost + prox_cost
+
+CONTROL_RANGE = 2200
 def in_range_control(hero,monster):
-    return object_distance(hero, monster) <=2200
+    return object_distance(hero, monster) <= CONTROL_RANGE
 
 def in_range_wind(hero,monster):
     return object_distance(hero, monster) <=1280
@@ -179,7 +218,7 @@ def get_points_on_circumference(x, y, number_of_points=32, r=800):
 def rush(hero):
     global ATTACK_SHIELD, entities, our_mana
 
-    monsters = sort_monster(get_monsters(entities), hero, max_distance=VIEW_DISTANCE)
+    monsters = sort_monster_close_enemy(get_monsters(entities), hero, max_distance=VIEW_DISTANCE)
     flag = False
     for monster in monsters:
         if our_mana >= 20 and monster[HEALTH] > ATTACK_MONSTER_SPELL_HEALTH and monster[SHIELD] == 0:
@@ -195,27 +234,59 @@ def rush(hero):
         print("MOVE %s %s"%(enemy_base_x,enemy_base_y))
 
 
-def get_option(hero, area):
+def get_unprotected_enemy_rush_for_wind(hero):
+
+    enemies = sort_monster_close_hero(get_enemies(entities), hero, max_distance=VIEW_DISTANCE)
+    return [enemy for enemy in enemies if in_range_wind(hero, enemy) and enemy[SHIELD] == 0]
+
+
+def get_unprotected_monster_rush_for_wind(hero):
+
+    monsters = sort_monster_close_hero(get_monsters(entities), hero, max_distance=VIEW_DISTANCE)
+    return [monster for monster in monsters if in_range_wind(hero, monster) and monster[SHIELD] == 0]
+
+
+def can_monster_reach_before_being_killed(monster, distace_to_base, numer_of_defenders = 2):
+    return monster[HEALTH] > int((distace_to_base - 300)*2*numer_of_defenders/400)
+
+
+def get_monsters_that_can_reach_base(hero, number_of_defenders = 2):
+    return [monster for monster in get_unprotected_monster_rush_for_wind(hero) if
+            can_monster_reach_before_being_killed(monster, distance(base_position, (monster[X], monster[Y])),
+                                                  number_of_defenders)]
+
+
+def get_defensive_wind_direction(hero):
+    return ( 2*hero[X] - base_x, 2*hero[Y] - base_y)
+
+
+def get_options_sorted(hero, value_calc, inner_defense_area, outer_defense_area):
     # Write an action using print
     # To debug: print("Debug messages...", file=sys.stderr)
     # Get options
     options = get_options(hero)
     # Compute value
     ## Minimizing cost
-    options = sorted(options, key=lambda o: compute_value(o, solution, area))
+    options_with_values = [(option, value_calc(option, solution, inner_defense_area, outer_defense_area)) for option in options]
+    return sorted(options_with_values, key=lambda o: o[1])
+
+
+def get_option(hero, value_calc, inner_defense_area, outer_defense_area):
+    option_with_values = get_options_sorted(hero, value_calc, inner_defense_area, outer_defense_area)
     # for option in options:
     #    print("Evaluating option %s %s" % (str(option),compute_value(option,solution)), file=sys.stderr)
-    option = options[0]
+    _, best_score = option_with_values[0]
     # print("Choosing option %s " % (str(option)), file=sys.stderr)
-    return option
+    best_options = [option[0] for option in option_with_values if option[1] < (best_score + 1)]
+    return random.choice(best_options)
 
 
-def can_attack(monster):
+def can_spell(monster):
     return our_mana >= 20 and monster[HEALTH] > ATTACK_MONSTER_SPELL_HEALTH and monster[SHIELD] == 0
 
 
-def in_enemies_base(monster):
-    return monster[ENEMY_BASE_DISTANCE] <= SHIELD_DISTANCE
+def in_enemies_base(entity):
+    return entity[ENEMY_BASE_DISTANCE] <= SHIELD_DISTANCE
 
 
 def is_not_friend_monster(monster):
@@ -230,8 +301,12 @@ def wind():
     return "SPELL WIND %s %s" % (enemy_base_x, enemy_base_y)
 
 
-def control(monster):
-    return "SPELL CONTROL %s %s %s" % (monster[ID], enemy_base_x, enemy_base_y)
+def control(entity):
+    return "SPELL CONTROL %s %s %s" % (entity[ID], enemy_base_x, enemy_base_y)
+
+
+def move(entity):
+    return "MOVE %s %s" % (entity[X], entity[Y])
 
 
 def get_attack_spell(monster, hero):
@@ -252,35 +327,99 @@ def wait():
     print("WAIT")
 
 
-def attack(hero, entities, attack_area = 1.9):
+def is_monster_moving_towards_enemy_base(monster):
+    enemy_base_x, _ = enemy_base_position
+    if enemy_base_x == 0:
+        return monster[VX] < 0 and monster[VY] < 0
+    else:
+        return monster[VX] > 0 and monster[VY] > 0
+
+
+def get_monsters_for_enemy_be_controlled(hero, max_distance, distance_to_enemy_base, check_monster_direction = False):
+
+    monsters = list()
+    for monster in get_monsters(entities):
+        # if monster[THREAT] == FRIEND and object_distance(monster,hero) <= max_distance and (not check_monster_direction or is_monster_moving_towards_enemy_base(monster)):
+        if monster[THREAT] == FRIEND and object_distance(monster, hero) <= max_distance and distance((monster[X], monster[Y]), enemy_base_position) < distance_to_enemy_base:
+            monsters.append(monster)
+    return monsters
+
+
+ASSIST_MONSTER_RUSH = 5
+ATTACK_ENEMY_CONTROL_RUSH_MANA = 100
+IN_ASSIST_RUSH_MODE = False
+STOP_ASSIST_RUSH_MODE_MANA = 9
+DISTANCE_TO_ENEMY_BASE = 1500
+
+
+def should_enemy_be_controlled(hero):
+
+    monsters = get_monsters_for_enemy_be_controlled(hero, VIEW_DISTANCE, DISTANCE_TO_ENEMY_BASE)
+    return len(monsters) > ASSIST_MONSTER_RUSH and (our_mana > ATTACK_ENEMY_CONTROL_RUSH_MANA or (
+                IN_ASSIST_RUSH_MODE and our_mana > STOP_ASSIST_RUSH_MODE_MANA))
+
+
+def get_monsters_closest_to_enemy_base(distance_to_enemy_base):
+    monsters = list()
+    for monster in get_monsters(entities):
+        # if monster[THREAT] == FRIEND and object_distance(monster,hero) <= max_distance and (not check_monster_direction or is_monster_moving_towards_enemy_base(monster)):
+        if monster[THREAT] == FRIEND and distance((monster[X], monster[Y]), enemy_base_position) < distance_to_enemy_base:
+            monsters.append(monster)
+    return sorted(monsters, key=lambda x: distance((x[X], x[Y]), enemy_base_position))
+
+
+def should_walk_towards_monster(hero, monster):
+    return object_distance(hero, monster) > 800
+
+
+ASSIST_MONSTER_DISTANCE = 1500
+
+
+def assist_monster(hero):
+    monsters = get_monsters_closest_to_enemy_base(ASSIST_MONSTER_DISTANCE)
+    target = None
+    for monster in monsters:
+        if should_walk_towards_monster(hero, monster):
+            target = monster
+            break
+    if target:
+        return move(target)
+    return None
+
+
+def attack(hero, inner, outer):
 
         global monster, our_mana, ROUND, ATTACK_SHIELD
 
-        def can_move(monster):
-            return monster[THREAT] != FRIEND and distance((monster[X], monster[Y]), enemy_base_position) < 11000
+        ATTACK_DISTANCE = 11000
+        def can_move_for_attack(monster):
+            return monster[THREAT] != FRIEND and distance((monster[X], monster[Y]), enemy_base_position) < ATTACK_DISTANCE
 
         if not ATTACK_SHIELD == 0:
             rush(hero)
         else:
             print("Hero %s chooses an action" % hero, file=sys.stderr)
-            option = get_option(hero, attack_area)
+            # option = get_option(hero, compute_value, inner, outer)
+            option = get_option(hero, compute_value_enemy_base, inner, outer)
             # Update solution
-            monsters = sort_monster(get_monsters(entities), hero, max_distance=VIEW_DISTANCE)
+            monsters = sort_monster_close_enemy(get_monsters(entities), hero, max_distance=VIEW_DISTANCE)
             has_spell = False
 
             for monster in monsters:
                 action = "WAIT"
 
-                if can_attack(monster):
-                    spell = get_attack_spell(monster, hero)
+                if can_spell(monster):
+                    spell = get_attack_spell(monster)
                     if spell:
                         action = spell
                         has_spell = True
 
                 if has_spell:
                     our_mana = our_mana - 10
-                elif can_move(monster):
-                    action = "MOVE %s %s" % (monster[X], monster[Y])
+                elif can_move_for_attack(monster):
+                    #x, y = attack_with_barycenter(monster)
+                    x, y = monster[X], monster[Y]
+                    action = "MOVE %s %s" % (x, y)
                     has_spell = True
 
                 if has_spell:
@@ -302,7 +441,7 @@ PUSH = [1]
 ATTACK  = [0]
 
 
-def filter_and_choose_monster(hero, defense_area):
+def filter_and_choose_enemy(hero, defense_area):
     return choose_close_monster(
         filter(lambda x: distance((x[X], x[Y]), (base_x, base_y)) < BASE_DISTANCE * (1 + defense_area),
                get_enemies(entities)), hero)
@@ -317,15 +456,54 @@ def can_spell_defensive_wind(id, i):
     return id in PUSH and enemy[SHIELD] < 1 and in_range_wind(entities[HERO][i], enemy)
 
 
-def defend(id, entities, defense_area = 0.1):
+def get_threat_monster_within_reach(entity):
+    return [monster for monster in get_threat_monsters(entities) if monster != entity and object_distance(entity, monster) < 1600]
+
+
+def get_monster_within_reach(entity):
+    return [monster for monster in get_monsters(entities) if monster != entity and object_distance(entity, monster) < 1600]
+
+
+def get_center(entities):
+    return sum(entity[X] for entity in entities) / len(entities), sum(entity[Y] for entity in entities) / len(entities)
+
+
+def get_closer_to_monster(center, dist, target):
+    return target + (center - target) * 799 / dist
+
+
+def move_with_barycenter(monster, get_monster):
+    centroid_x, centroid_y = monster[X], monster[Y]
+    monsters_within_reach = get_monster(monster)
+
+    if monsters_within_reach:
+        centroid_x, centroid_y = get_center(monsters_within_reach)
+        dist = distance((monster[X], monster[Y]), (centroid_x, centroid_y))
+        if dist >= 800:
+            centroid_x = get_closer_to_monster(centroid_x, dist, monster[X])
+            centroid_y = get_closer_to_monster(centroid_y, dist, monster[Y])
+
+    return int(centroid_x), int(centroid_y)
+
+
+def defend_with_barycenter(monster):
+    move_with_barycenter(monster, get_threat_monster_within_reach)
+
+
+def attack_with_barycenter(monster):
+    move_with_barycenter(monster, get_monster_within_reach)
+
+
+def defend(id, entities, inner, outer):
 
     global monster, our_mana
     i = id
     print("Hero %s chooses an action" % entities[HERO][i][ID], file=sys.stderr)
-    option = get_option(entities[HERO][i], defense_area)
+    # option = get_option(entities[HERO][i], compute_value, inner, outer)
+    option = get_option(entities[HERO][i], compute_value_base, inner, outer)
     # print("Choosing option %s " % (str(option)), file=sys.stderr)
     # Update solution
-    enemy = filter_and_choose_monster(entities[HERO][i], defense_area)
+    enemy = filter_and_choose_enemy(entities[HERO][i], outer)
     monster = choose_monster(get_threat_monsters(entities))
     if enemy:
         print("Preparing a spell on enemy %s shield %s range %s " % (str(enemy),enemy[SHIELD],in_range_wind(entities[HERO][i], enemy)), file=sys.stderr)
@@ -419,10 +597,9 @@ def run( input = input):
         solution = []
         for i in range(heroes_per_player):
             if attacker(i):
-                attack(entities[HERO][i], entities)
+                attack(entities[HERO][i], -0.2, 0.5)
             else:
-                defend(i, entities)
-    return solution
+                defend(i, 0, 0.3)
 
 if __name__=="__main__":
     run()
