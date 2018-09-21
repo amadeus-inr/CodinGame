@@ -266,12 +266,12 @@ def is_monster_moving_towards_enemy_base(monster):
         return monster[VX] > 0 and monster[VY] > 0
 
 
-def get_monsters_for_enemy_be_controlled(hero, max_distance, check_monster_direction = False):
+def get_monsters_for_enemy_be_controlled(hero, max_distance, DISTANCE_TO_ENEMY_BASE, check_monster_direction = False):
 
     monsters = list()
     for monster in get_monsters(entities):
         # if monster[THREAT] == FRIEND and object_distance(monster,hero) <= max_distance and (not check_monster_direction or is_monster_moving_towards_enemy_base(monster)):
-        if monster[THREAT] == FRIEND and object_distance(monster, hero) <= max_distance:
+        if monster[THREAT] == FRIEND and object_distance(monster, hero) <= max_distance and distance((monster[X], monster[Y]), enemy_base_position) < DISTANCE_TO_ENEMY_BASE:
             monsters.append(monster)
     return monsters
 
@@ -280,13 +280,13 @@ ASSIST_MONSTER_RUSH = 5
 ATTACK_ENEMY_CONTROL_RUSH_MANA = 100
 IN_ASSIST_RUSH_MODE = False
 STOP_ASSIST_RUSH_MODE_MANA = 9
-
+DISTANCE_TO_ENEMY_BASE = 1500
 
 def should_enemy_be_controlled(hero):
 
-    enemies = sort_monster(get_enemies(entities), hero, VIEW_DISTANCE)
-    monsters = get_monsters_for_enemy_be_controlled(hero, VIEW_DISTANCE)
-    return len(monsters) > ASSIST_MONSTER_RUSH and (our_mana > ATTACK_ENEMY_CONTROL_RUSH_MANA or (IN_ASSIST_RUSH_MODE and our_mana > STOP_ASSIST_RUSH_MODE_MANA))
+    monsters = get_monsters_for_enemy_be_controlled(hero, VIEW_DISTANCE, DISTANCE_TO_ENEMY_BASE)
+    return len(monsters) > ASSIST_MONSTER_RUSH and (our_mana > ATTACK_ENEMY_CONTROL_RUSH_MANA or (
+                IN_ASSIST_RUSH_MODE and our_mana > STOP_ASSIST_RUSH_MODE_MANA))
 
 
 def attack(hero, attack_area = 1.9):
