@@ -6,7 +6,27 @@ import numpy
 # Auto-generated code below aims at helping you parse
 # the standard input according to the problem statement.
 
+# Global variables
 
+ATTACK_MONSTER_SPELL_HEALTH = 16
+DEFENSE_MONSTER_SPELL_HEALTH = 14
+SHIELD_DISTANCE = 5000
+RUSH_LENGTH = 2
+
+# Configure
+
+base_y = ""
+base_x = ""
+enemy_base_y = ""
+enemy_base_x = ""
+ROUND = 0
+ATTACK_SHIELD = 0
+entities = []
+enemy_base_position = ""
+base_position = ""
+solution = []
+monster = ""
+enemy = ""
 
 # CONSTANTS
 
@@ -26,6 +46,7 @@ ENEMY_BASE_DISTANCE = "ENEMY_BASE_DISTANCE"
 NO_THREAT = 0
 IS_THREAT = 1
 FRIEND = 2
+BASE_DISTANCE_VALUE = 5000
 
 ## ENTITY
 
@@ -33,7 +54,7 @@ MONSTER = 0
 HERO = 1
 ENEMY = 2
 
-def walk_towards_enemy( hero, enemy_base_x,enemy_base_y,base_x,base_y,rate = 0.5 ):
+def walk_towards_enemy( hero, rate = 0.5 ):
     target = rate * (numpy.array((enemy_base_x,enemy_base_y)) - numpy.array((base_x,base_y)))
 
     distance_target = distance((hero[X],hero[Y]),target)
@@ -44,13 +65,15 @@ def walk_towards_enemy( hero, enemy_base_x,enemy_base_y,base_x,base_y,rate = 0.5
 
 def distance( A, B):
 
-    return numpy.linalg.norm(numpy.array(A) - numpy.array(B))
+    return float(numpy.linalg.norm(numpy.array(A) - numpy.array(B)))
 
 def object_distance( A, B):
 
     return distance ((A[X],A[Y]),(B[X],B[Y]))
 
-def get_entities():
+def get_entities(input):
+    global enemy_base_position, base_position, entities
+    print("Get entities", file=sys.stderr)
     entities = {MONSTER: [], HERO: [], ENEMY: []}
     entity_count = int(input())
     for i in range(entity_count):
@@ -119,7 +142,6 @@ def get_threat_monsters(entities):
 def get_monsters(entities):
     return entities[MONSTER]
 
-
 def get_enemies(ent):
     return ent[ENEMY]
 
@@ -138,17 +160,18 @@ def potential_monster_to_target(entities, hero):
 
     return close_monsters
 
-BASE_DISTANCE = 5000
+
 
 def compute_value(option,solution, defense_area, _):
+    global base_position
     cost = 0
     base_distance = distance(option, base_position)
     for hero in solution:
 
         hero_distance = distance(hero, option)
 
-        cost = cost + max(0,2 * VIEW_DISTANCE - hero_distance)
-    base_penalty = -100000 if base_distance > BASE_DISTANCE * (1 + defense_area) else 1
+        cost = cost + max(0,2.0 * float(VIEW_DISTANCE) - hero_distance)
+    base_penalty = -100000 if base_distance > BASE_DISTANCE_VALUE * (1 + defense_area) else 1
     return - base_penalty * base_distance + cost
 
 
@@ -157,8 +180,8 @@ def compute_value_base(option,solution, inner_defense_area, outer_defense_area):
     prox_cost = proximity_cost(option, solution)
 
     base_distance = distance(option, base_position)
-    within_internal_wall_cost = max(0, (BASE_DISTANCE * (1 + inner_defense_area) - base_distance)*21)
-    above_external_wall_cost = max(0, (base_distance - BASE_DISTANCE * (1 + outer_defense_area))*42)
+    within_internal_wall_cost = max(0, (BASE_DISTANCE_VALUE * (1 + inner_defense_area) - base_distance)*21)
+    above_external_wall_cost = max(0, (base_distance - BASE_DISTANCE_VALUE * (1 + outer_defense_area))*42)
 
     return within_internal_wall_cost + above_external_wall_cost + prox_cost
 
@@ -174,8 +197,8 @@ def compute_value_enemy_base(option,solution, inner_defense_area, outer_defense_
     prox_cost = proximity_cost(option, solution)
 
     enemy_base_distance = distance(option, enemy_base_position)
-    within_internal_wall_cost = max(0, (enemy_base_distance - BASE_DISTANCE * (1 + outer_defense_area))*42)
-    above_external_wall_cost = max(0, (BASE_DISTANCE * (1 + inner_defense_area) - enemy_base_distance)*21)
+    within_internal_wall_cost = max(0, (enemy_base_distance - BASE_DISTANCE_VALUE * (1 + outer_defense_area))*42)
+    above_external_wall_cost = max(0, (BASE_DISTANCE_VALUE * (1 + inner_defense_area) - enemy_base_distance)*21)
 
     return within_internal_wall_cost + above_external_wall_cost + prox_cost
 
@@ -198,7 +221,7 @@ def get_enemy_hero_in_range(hero):
 
 ATTACK_SHIELD = 0
 def rush(hero):
-    global ATTACK_SHIELD, our_mana
+    global ATTACK_SHIELD, entities, our_mana
 
     monsters = sort_monster_close_enemy(get_monsters(entities), hero, max_distance=VIEW_DISTANCE)
     flag = False
@@ -246,6 +269,7 @@ def get_monsters_that_can_reach_base(hero, number_of_defenders = 2):
 
 
 def get_defensive_wind_direction(hero):
+    global base_x, base_y
     return ( 2*hero[X] - base_x, 2*hero[Y] - base_y)
 
 
@@ -306,16 +330,16 @@ def move(entity):
     return "MOVE %s %s" % (entity[X], entity[Y])
 
 
-def get_attack_spell(monster):
+def get_attack_spell(monster, hero):
     global ATTACK_SHIELD
     if in_enemies_base(monster):
-        if in_range_control(entities[HERO][i], monster):
+        if in_range_control(hero, monster):
             ATTACK_SHIELD = RUSH_LENGTH
             return shield(monster)
     elif monster[ENEMY_BASE_DISTANCE] <= 6000:
-        if in_range_wind(entities[HERO][i], monster):
+        if in_range_wind(hero, monster):
             return wind()
-    elif is_not_friend_monster(monster) and in_range_control(entities[HERO][i], monster):
+    elif is_not_friend_monster(monster) and in_range_control(hero, monster):
         return control(monster)
     return None
 
@@ -325,6 +349,7 @@ def wait():
 
 
 def is_monster_moving_towards_enemy_base(monster):
+    global enemy_base_x, enemy_base_position
     enemy_base_x, _ = enemy_base_position
     if enemy_base_x == 0:
         return monster[VX] < 0 and monster[VY] < 0
@@ -384,7 +409,7 @@ def assist_monster(hero):
     return None
 
 
-def attack(hero, inner, outer):
+def attack(hero, inner, outer, entities ):
 
         global monster, our_mana, ROUND, ATTACK_SHIELD
 
@@ -406,7 +431,7 @@ def attack(hero, inner, outer):
                 action = "WAIT"
 
                 if can_spell(monster):
-                    spell = get_attack_spell(monster)
+                    spell = get_attack_spell(monster, hero)
                     if spell:
                         action = spell
                         has_spell = True
@@ -440,7 +465,7 @@ ATTACK  = [0]
 
 def filter_and_choose_enemy(hero, defense_area):
     return choose_close_monster(
-        filter(lambda x: distance((x[X], x[Y]), (base_x, base_y)) < BASE_DISTANCE * (1 + defense_area),
+        filter(lambda x: distance((x[X], x[Y]), (base_x, base_y)) < BASE_DISTANCE_VALUE * (1 + defense_area),
                get_enemies(entities)), hero)
 
 
@@ -491,9 +516,10 @@ def attack_with_barycenter(monster):
     move_with_barycenter(monster, get_monster_within_reach)
 
 
-def defend(id, inner, outer, spell_distance):
+def defend(id,entities, inner, outer, spell_distance):
 
     global monster, our_mana
+    i = id
     print("Hero %s chooses an action" % entities[HERO][i][ID], file=sys.stderr)
     # option = get_option(entities[HERO][i], compute_value, inner, outer)
     option = get_option(entities[HERO][i], compute_value_base, inner, outer)
@@ -567,20 +593,15 @@ def attacker(i):
 
     return i == 0
 
-ATTACK_MONSTER_SPELL_HEALTH = 16
-DEFENSE_MONSTER_SPELL_HEALTH = 14
-SHIELD_DISTANCE = 5000
-RUSH_LENGTH = 2
 
-if __name__=="__main__":
-
+def run( input = input):
+    global base_y, base_x, enemy_base_position, enemy_base_y,enemy_base_x, ROUND, our_mana, enemy, solution, base_position
     base_x, base_y = [int(i) for i in input().split()]
     base_position = (base_x, base_y)
     enemy_base_position = get_enemy_position(base_x)
 
     heroes_per_player = int(input())
     # game loop
-    ROUND = 0
     while True:
         ROUND = ROUND + 1
         our_mana = 0
@@ -589,7 +610,7 @@ if __name__=="__main__":
             if i == 0:
                 our_mana = mana
 
-        entities = get_entities()
+        entities = get_entities(input)
         enemy = {}
         monsters = get_threat_monsters(entities)
         for monster in monsters:
@@ -598,6 +619,9 @@ if __name__=="__main__":
         solution = []
         for i in range(heroes_per_player):
             if attacker(i):
-                attack(entities[HERO][i], -0.2, 0.5)
+                attack(entities[HERO][i], -0.2, 0.5, entities)
             else:
-                defend(i, 0, 0.3, -0.2)
+                defend(i,entities, 0, 0.3, -0.2)
+
+if __name__=="__main__":
+    run()
