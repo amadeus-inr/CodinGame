@@ -544,6 +544,7 @@ def defend(id,entities, inner, outer, spell_distance):
     if enemy:
         if can_spell_defensive_wind(id, i, enemy):
             print("Trying to push %s" % str(enemy), file=sys.stderr)
+
             attack = wind()
             print("Attack enemy %s" % str(enemy), file=sys.stderr)
             solution.append((enemy[X], enemy[Y]))
