@@ -1,4 +1,4 @@
-# CodinGame [DRAFT based on memory]
+# CodinGame
 
 ## Team
 
